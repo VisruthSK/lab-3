@@ -1,0 +1,197 @@
+---
+title: "2018 Global Health Monitor Report"
+format:
+  dashboard:
+    theme: yeti
+    orientation: columns
+    nav-buttons: [github, linkedin]
+    github: https://github.com/VisruthSK/lab-3
+    linkedin: https://www.linkedin.com/in/visruthsk/
+# logo: images/olympics-logo.svg
+# logo-alt: multicoloured olympic ring logo
+embed-resources: true
+---
+
+```{r setup}
+library(tidyverse)
+library(gt)
+
+df <- readxl::read_xlsx(
+  here::here(
+    "wgm2018-dataset-crosstabs-all-countries.xlsx"
+  ),
+  sheet = 2
+)
+
+df <- "0=Not assigned, 1=Africa,2=Africa,3=Africa,4=Africa,5=Africa,6=Americas,7=Americas,8=Americas,9=Asia,10=Asia,11=Asia,12=Asia,13=Middle East,14=Former Soviet Union,15=Europe,16=Europe,17=Europe,18=Asia" |>
+  str_split(",") |>
+  unlist() |>
+  str_trim() |>
+  as_tibble() |>
+  separate_wider_delim(value, "=", names = c("Regions_Report", "Region")) |>
+  mutate(Regions_Report = as.numeric(Regions_Report)) |>
+  right_join(df) |>
+  select(-Regions_Report)
+
+df <- "1=United States, 2=Egypt, 3=Morocco, 4=Lebanon, 5=Saudi Arabia, 6=Jordan, 8=Turkey, 9=Pakistan, 10=Indonesia, 11=Bangladesh, 12=United Kingdom, 13=France, 14=Germany, 15=Netherlands, 16=Belgium, 17=Spain, 18=Italy, 19=Poland, 20=Hungary, 21=Czech Republic, 22=Romania, 23=Sweden, 24=Greece, 25=Denmark, 26=Iran, 28=Singapore, 29=Japan, 30=China, 31=India, 32=Venezuela, 33=Brazil, 34=Mexico, 35=Nigeria, 36=Kenya, 37=Tanzania, 38=Israel, 39=Palestinian Territories, 40=Ghana, 41=Uganda, 42=Benin, 43=Madagascar, 44=Malawi, 45=South Africa, 46=Canada, 47=Australia, 48=Philippines, 49=Sri Lanka, 50=Vietnam, 51=Thailand, 52=Cambodia, 53=Laos, 54=Myanmar, 55=New Zealand, 57=Botswana, 60=Ethiopia, 61=Mali, 62=Mauritania, 63=Mozambique, 64=Niger, 65=Rwanda, 66=Senegal, 67=Zambia, 68=South Korea, 69=Taiwan, 70=Afghanistan, 71=Belarus, 72=Georgia, 73=Kazakhstan, 74=Kyrgyzstan, 75=Moldova, 76=Russia, 77=Ukraine, 78=Burkina Faso, 79=Cameroon, 80=Sierra Leone, 81=Zimbabwe, 82=Costa Rica, 83=Albania, 84=Algeria, 87=Argentina, 88=Armenia, 89=Austria, 90=Azerbaijan, 96=Bolivia, 97=Bosnia and Herzegovina, 99=Bulgaria, 100=Burundi, 103=Chad, 104=Chile, 105=Colombia, 106=Comoros, 108=Republic of Congo, 109=Croatia, 111=Cyprus, 114=Dominican Republic, 115=Ecuador, 116=El Salvador, 119=Estonia, 121=Finland, 122=Gabon, 124=Guatemala, 125=Guinea, 128=Haiti, 129=Honduras, 130=Iceland, 131=Iraq, 132=Ireland, 134=Ivory Coast, 137=Kuwait, 138=Latvia, 140=Liberia, 141=Libya, 143=Lithuania, 144=Luxembourg, 145=Macedonia, 146=Malaysia, 148=Malta, 150=Mauritius, 153=Mongolia, 154=Montenegro, 155=Namibia, 157=Nepal, 158=Nicaragua, 160=Norway, 163=Panama, 164=Paraguay, 165=Peru, 166=Portugal, 173=Serbia, 175=Slovakia, 176=Slovenia, 183=Eswatini, 184=Switzerland, 185=Tajikistan, 186=The Gambia, 187=Togo, 190=Tunisia, 191=Turkmenistan, 193=United Arab Emirates, 194=Uruguay, 195=Uzbekistan, 197=Yemen, 198=Kosovo, 202=Northern Cyprus" |>
+  str_split(",") |>
+  unlist() |>
+  str_trim() |>
+  as_tibble() |>
+  separate_wider_delim(value, "=", names = c("WP5", "Country")) |>
+  mutate(WP5 = as.numeric(WP5)) |>
+  right_join(df) |>
+  select(-WP5)
+```
+
+# Visuals
+
+## Column - 1
+### Vaccine Belief by Region and Country {.tabset}
+
+```{r}
+#| title: Vaccine Belief by Region and Country
+library(gghalves)
+# Taken from https://github.com/teunbrand/ggplot_tricks?tab=readme-ov-file#lets-begin
+my_fill <- aes(fill = after_scale(alpha(colour, 0.3)))
+# A small nudge offset
+offset <- 0.025
+
+vaccine_info <- df |>
+  drop_na(Q25) |>
+  mutate(
+    vaccine = Q25 < 3,
+    across(c(Country, Region), fct)
+  ) |>
+  filter(Region != "Not assigned") |>
+  group_by(Region, Country) |>
+  summarize(percent = mean(vaccine), .groups = "drop_last")
+
+vaccine_info |>
+  ggplot(
+    aes(
+      x = fct_reorder(Region, percent),
+      y = percent,
+      colour = Region,
+      !!!my_fill
+    )
+  ) +
+  geom_half_violin(side = "l", trim = FALSE, scale = "width") +
+  geom_half_boxplot(
+    side = "l",
+    coef = 0,
+    width = 0.4,
+    outliers = FALSE,
+    alpha = 0.3
+  ) +
+  geom_half_dotplot(
+    method = "histodot",
+    stackdir = "up",
+    dotsize = 1,
+    binwidth = 0.01
+  ) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  coord_flip() +
+  labs(
+    x = element_blank(),
+    y = element_blank(),
+    title = element_blank()
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+```{r}
+#| title: Data
+vaccine_info |>
+  ungroup() |>
+  mutate(Region = fct_reorder(Region, percent, .desc = TRUE)) |>
+  group_by(Region) |>
+  arrange(desc(percent), .by_group = TRUE) |>
+  gt() |>
+  fmt_percent(columns = percent, decimals = 1) |>
+  cols_label(
+    percent = "Vaccine Belief"
+  )
+```
+
+
+### Perceived Science Knowledge per Country {.tabset}
+
+```{r}
+library(leaflet)
+library(rnaturalearth)
+library(sf)
+
+science <- df |>
+  drop_na(Q1) |>
+  mutate(science = Q1 < 3, Country = fct(Country)) |>
+  group_by(Country) |>
+  summarize(percent = mean(science))
+
+country_data <- ne_countries(scale = "medium", returnclass = "sf") |>
+  mutate(
+    admin = case_when(
+      admin == "United States of America" ~ "United States",
+      admin == "Czechia" ~ "Czech Republic",
+      admin == "Palestine" ~ "Palestinian Territories",
+      admin == "Republic of the Congo" ~ "Republic of Congo",
+      admin == "Gambia" ~ "The Gambia",
+      admin == "United Republic of Tanzania" ~ "Tanzania",
+      admin == "North Macedonia" ~ "Macedonia",
+      admin == "Republic of Serbia" ~ "Serbia",
+      admin == "Republic of Serbia" ~ "Serbia",
+      TRUE ~ admin
+    )
+  ) |>
+  right_join(science, by = join_by(admin == Country)) |>
+  drop_na(scalerank)
+```
+
+```{r}
+#| title: Perceived Knowledge of Science per Country (Percentage of People who answered "a lot" or "some")
+country_colours <- colorNumeric(
+  palette = "Greens",
+  domain = country_data$percent,
+  na.color = "#bdbdbd"
+)
+
+country_labels <- glue::glue(
+  "<strong>{country_data$admin}</strong><br/>{paste0(round(country_data$percent * 100, 1), '%')}"
+) |>
+  lapply(htmltools::HTML)
+
+country_data |>
+  leaflet() |>
+  addTiles(options = tileOptions(noWrap = TRUE)) |>
+  addPolygons(
+    fillColor = ~ country_colours(percent),
+    weight = 1,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    label = country_labels,
+    highlightOptions = highlightOptions(
+      weight = 3,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    ),
+    group = "Countries"
+  )
+```
+
+```{r}
+#| title: Data
+science |>
+  gt() |>
+  fmt_percent(columns = percent, decimals = 1) |>
+  cols_label(
+    Country = "Country",
+    percent = ""
+  )
+```
+
+# Page 2
