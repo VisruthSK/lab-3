@@ -1,16 +1,24 @@
 ---
-title: "2018 Global Health Monitor Report"
+title: "Trust in Science in the 2018 Global Health Monitor Report"
 format:
   dashboard:
-    theme: yeti
+    theme: spacelab
     orientation: columns
     nav-buttons: [github, linkedin]
     github: https://github.com/VisruthSK/lab-3
     linkedin: https://www.linkedin.com/in/visruthsk/
-# logo: images/olympics-logo.svg
-# logo-alt: multicoloured olympic ring logo
+logo: images/Wellcome_Trust_logo.svg
+logo-alt: stylized W above "wellcome" 
 embed-resources: true
 ---
+
+<!-- 
+TODO: 
+1. Adjust page titles
+2. Adjust colours to all match with theme
+3. Add Flash Facts
+4. Make first column wider
+-->
 
 ```{r setup}
 library(tidyverse)
@@ -44,7 +52,97 @@ df <- "1=United States, 2=Egypt, 3=Morocco, 4=Lebanon, 5=Saudi Arabia, 6=Jordan,
   select(-WP5)
 ```
 
-# Visuals
+```{r}
+library(leaflet)
+library(rnaturalearth)
+library(sf)
+
+science <- df |>
+  drop_na(Q1) |>
+  mutate(science = Q1 < 3, Country = fct(Country)) |>
+  group_by(Country) |>
+  summarize(percent = mean(science))
+
+country_data <- ne_countries(scale = "medium", returnclass = "sf") |>
+  mutate(
+    admin = case_when(
+      admin == "United States of America" ~ "United States",
+      admin == "Czechia" ~ "Czech Republic",
+      admin == "Palestine" ~ "Palestinian Territories",
+      admin == "Republic of the Congo" ~ "Republic of Congo",
+      admin == "Gambia" ~ "The Gambia",
+      admin == "United Republic of Tanzania" ~ "Tanzania",
+      admin == "North Macedonia" ~ "Macedonia",
+      admin == "Republic of Serbia" ~ "Serbia",
+      admin == "Republic of Serbia" ~ "Serbia",
+      TRUE ~ admin
+    )
+  ) |>
+  right_join(science, by = join_by(admin == Country)) |>
+  drop_na(scalerank)
+```
+
+```{r}
+vaccine <- df |>
+  drop_na(Q25, Q26) |>
+  mutate(
+    safe = Q25 %in% c(4, 5),
+    effective = Q26 %in% c(4, 5),
+    across(c(Country, Region), fct)
+  ) |>
+  group_by(Country, Region) |>
+  summarize(
+    safe = mean(safe),
+    effective = mean(effective),
+    .groups = "drop"
+  )
+```
+
+# Vaccine Belief
+
+## Column - 1
+```{r}
+library(plotly)
+
+p <- vaccine |>
+  ggplot(aes(
+    x = safe,
+    y = effective
+  )) +
+  geom_point(aes(
+    text = glue::glue(
+      "Country: {Country}<br>",
+      "Region: {Region}<br>",
+      "Safe: {scales::percent(safe, accuracy = 0.01)}<br>",
+      "Effective: {scales::percent(effective, accuracy = 0.01)}"
+    ),
+    color = Region
+  )) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 0.5) +
+  labs(
+    x = "Disagree on Safety",
+    y = "Disagree on Efficacy",
+    title = "Positive Relation Between Disbelief in Vaccine Safety and Efficacy"
+  ) +
+  scale_x_continuous(labels = scales::label_percent()) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+ggplotly(p, tooltip = "text")
+```
+
+## Column - 2
+
+::: {.card title="Flash Facts"}
+**Here's a fact**
+:::
+
+::: {.card title="Flash Facts"}
+**Here's another fact**
+:::
+
+# Science
 
 ## Column - 1
 ### Vaccine Belief by Region and Country {.tabset}
@@ -118,38 +216,12 @@ vaccine_info |>
 
 ### Perceived Science Knowledge per Country {.tabset}
 
-```{r}
-library(leaflet)
-library(rnaturalearth)
-library(sf)
+#### Perceived Science Knowledge per Country
 
-science <- df |>
-  drop_na(Q1) |>
-  mutate(science = Q1 < 3, Country = fct(Country)) |>
-  group_by(Country) |>
-  summarize(percent = mean(science))
-
-country_data <- ne_countries(scale = "medium", returnclass = "sf") |>
-  mutate(
-    admin = case_when(
-      admin == "United States of America" ~ "United States",
-      admin == "Czechia" ~ "Czech Republic",
-      admin == "Palestine" ~ "Palestinian Territories",
-      admin == "Republic of the Congo" ~ "Republic of Congo",
-      admin == "Gambia" ~ "The Gambia",
-      admin == "United Republic of Tanzania" ~ "Tanzania",
-      admin == "North Macedonia" ~ "Macedonia",
-      admin == "Republic of Serbia" ~ "Serbia",
-      admin == "Republic of Serbia" ~ "Serbia",
-      TRUE ~ admin
-    )
-  ) |>
-  right_join(science, by = join_by(admin == Country)) |>
-  drop_na(scalerank)
-```
+::: {.card}
+Percentage of people who answered "a lot" or "some" to the question: *How much do you, personally, know about science? Do you know a lot, some, not much, or nothing at all?*
 
 ```{r}
-#| title: Perceived Knowledge of Science per Country (Percentage of People who answered "a lot" or "some")
 country_colours <- colorNumeric(
   palette = "Greens",
   domain = country_data$percent,
@@ -182,16 +254,17 @@ country_data |>
     group = "Countries"
   )
 ```
+:::
+
+#### Data
 
 ```{r}
-#| title: Data
 science |>
   gt() |>
   fmt_percent(columns = percent, decimals = 1) |>
   cols_label(
     Country = "Country",
     percent = ""
-  )
+  ) |>
+  opt_row_striping(FALSE)
 ```
-
-# Page 2
