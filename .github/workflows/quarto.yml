@@ -1,4 +1,4 @@
-name: Render Quarto Dashboard
+name: Render Dashboard
 
 on:
   push:

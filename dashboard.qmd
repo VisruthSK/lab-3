@@ -19,12 +19,13 @@ library(gt)
 use("glue", "glue")
 use("readxl", "read_xlsx")
 use("htmltools", "HTML")
+use("here", "here")
 use("htmlwidgets", "onRender")
 use("RColorBrewer", "brewer.pal")
 use("scales", c("label_percent", "percent", "alpha"))
 
 df <- read_xlsx(
-  here::here(
+  here(
     "wgm2018-dataset-crosstabs-all-countries.xlsx"
   ),
   sheet = 2
