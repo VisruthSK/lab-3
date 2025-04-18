@@ -12,14 +12,17 @@ logo-alt: stylized W above "wellcome"
 embed-resources: true
 ---
 
-```{r setup}
+```{r}
+#| label: setup
 #| warning: false
 library(tidyverse)
 library(gt)
+library(rnaturalearthdata) # NOTE: needed for renv
+library(here)
 use("glue", "glue")
 use("readxl", "read_xlsx")
-use("htmltools", "HTML")
-use("here", "here")
+use("htmltools", c("HTML", "tags"))
+# use("here", "here") # TODO: not being recognized by renv?
 use("htmlwidgets", "onRender")
 use("RColorBrewer", "brewer.pal")
 use("scales", c("label_percent", "percent", "alpha"))
@@ -54,7 +57,8 @@ df <- "1=United States, 2=Egypt, 3=Morocco, 4=Lebanon, 5=Saudi Arabia, 6=Jordan,
 region_colours <- brewer.pal(7, "Dark2")
 ```
 
-```{r map data}
+```{r}
+#| label: map-data
 library(leaflet)
 library(rnaturalearth)
 library(sf)
@@ -84,7 +88,8 @@ country_data <- ne_countries(scale = "medium", returnclass = "sf") |>
   drop_na(scalerank)
 ```
 
-```{r vaccine data}
+```{r}
+#| label: vaccine-data
 vaccine <- df |>
   drop_na(Q25, Q26) |>
   mutate(
@@ -111,11 +116,12 @@ vaccine <- df |>
 ::: {.card expandable="false"}
 Percentage of people who answered "a lot" or "some" to the question: *How much do you, personally, know about science? Do you know a lot, some, not much, or nothing at all?*
 
-```{r map}
+```{r}
+#| label: map
 country_colours <- colorNumeric(
   palette = "Purples",
   domain = country_data$percent,
-  na.color = "#bdbdbd"
+  na.color = "#f9f9f9"
 )
 
 country_labels <- glue(
@@ -148,13 +154,27 @@ country_data |>
       // Select the map container element (el) and set its background style
       el.style.backgroundColor = 'transparent';
     }
-  ") 
+  ") |>
+  addControl(
+    html = tags$div(
+      tags$h4(
+        style = "margin-bottom: 2px; margin-top: 2px; text-align:center;",
+        "Perceived Science Knowledge per Country ('a lot' or 'some')"
+      ),
+      tags$p(
+        style = "font-size: 0.7em; margin-bottom: 2px; margin-top: 0px; text-align:center;",
+        "How much do you, personally, know about science? Do you know a lot, some, not much, or nothing at all?"
+      )
+    ),
+    position = "topright"
+  )
 ```
 :::
 
 #### Data
 
-```{r science data}
+```{r}
+#| label: science-data
 #| expandable: false
 science |>
   arrange(desc(percent)) |>
@@ -187,7 +207,8 @@ Surveyed respondents from **Egypt** expressed some of the *least* disbelief in t
 ## Column - 1
 
 ### Vaccine Safety and Efficacy {.tabset}
-```{r plotly}
+```{r}
+#| label: plotly
 #| title: Vaccine Safety and Efficacy
 library(plotly)
 
@@ -200,8 +221,8 @@ p <- vaccine |>
     text = glue(
       "Country: {Country}<br>",
       "Region: {Region}<br>",
-      "Safe: {percent(safe, accuracy = 0.01)}<br>",
-      "Effective: {percent(effective, accuracy = 0.01)}"
+      "Safe: {percent(safe, accuracy = 1)}<br>",
+      "Effective: {percent(effective, accuracy = 1)}"
     ),
     color = Region
   )) +
@@ -214,13 +235,13 @@ p <- vaccine |>
   scale_x_continuous(labels = label_percent()) +
   scale_y_continuous(labels = label_percent()) +
   scale_color_manual(values = region_colours) +
-  theme_bw() +
-  theme(legend.position = "none")
+  theme_bw()
 
 ggplotly(p, tooltip = "text")
 ```
 
-```{r vaccine safety efficacy gt}
+```{r}
+#| label: vaccine-safety-efficacy-gt
 #| title: Data
 vaccine |>
   mutate(tmp = (safe + effective) / 2) |> 
@@ -246,7 +267,8 @@ vaccine |>
 ::: {.card title = "Vaccine Safety by Region and Country"}
 Percentage of people who agreed with the statement: *Vaccines are safe.*
 
-```{r funky plot}
+```{r}
+#| label: funky-plot
 library(gghalves)
 # Taken from https://github.com/teunbrand/ggplot_tricks?tab=readme-ov-file#lets-begin
 my_fill <- aes(fill = after_scale(alpha(colour, 0.3)))
@@ -300,7 +322,8 @@ vaccine_info |>
 ```
 :::
 
-```{r vaccine data gt}
+```{r}
+#| label: vaccine-data-gt
 #| title: Data
 vaccine_info |>
   ungroup() |>

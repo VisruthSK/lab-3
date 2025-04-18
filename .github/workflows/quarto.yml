@@ -23,7 +23,6 @@ jobs:
         with:
           r-version: 'release'
 
-      # TODO: check if this is needed
       - name: Install system dependencies
         run: |
           sudo apt-get update
