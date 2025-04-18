@@ -23,6 +23,21 @@ jobs:
         with:
           r-version: 'release'
 
+      # TODO: check if this is needed
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin \
+            libcurl4-openssl-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libgdal-dev \
+            libnode-dev \
+            libpng-dev \
+            libudunits2-dev \
+            libx11-dev
+
       - name: Setup renv
         uses: r-lib/actions/setup-renv@v2
 
