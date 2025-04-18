@@ -46,7 +46,7 @@ jobs:
         uses: quarto-dev/quarto-actions/render@v2
         with:
           path: dashboard.qmd
-          to: dashboard
+          format: dashboard
 
       - name: Commit rendered file
         run: |
