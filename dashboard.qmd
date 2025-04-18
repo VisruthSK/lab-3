@@ -12,23 +12,20 @@ logo-alt: stylized W above "wellcome"
 embed-resources: true
 ---
 
-<!-- 
-TODO: 
-1. Adjust page titles
-2. Adjust colours to all match with theme
-3. Add Flash Facts
-4. Make first column wider
--->
-
 ```{r setup}
+#| warning: false
 library(tidyverse)
 library(gt)
 use("glue", "glue")
+use("here", "here")
+use("readxl", "read_xlsx")
+use("htmltools", "HTML")
+use("htmlwidgets", "onRender")
 use("RColorBrewer", "brewer.pal")
 use("scales", c("label_percent", "percent", "alpha"))
 
-df <- readxl::read_xlsx(
-  here::here(
+df <- read_xlsx(
+  here(
     "wgm2018-dataset-crosstabs-all-countries.xlsx"
   ),
   sheet = 2
@@ -124,7 +121,7 @@ country_colours <- colorNumeric(
 country_labels <- glue(
   "<strong>{country_data$admin}</strong><br/>{percent(country_data$percent, accuracy = 0.1)}"
 ) |>
-  lapply(htmltools::HTML)
+  lapply(HTML)
 
 country_data |>
   leaflet() |>
@@ -145,7 +142,13 @@ country_data |>
       bringToFront = TRUE
     ),
     group = "Countries"
-  )
+  ) |> 
+  onRender("
+    function(el, x) {
+      // Select the map container element (el) and set its background style
+      el.style.backgroundColor = 'transparent';
+    }
+  ") 
 ```
 :::
 

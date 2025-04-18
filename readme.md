@@ -33,3 +33,5 @@ containing your source code **and** a link to your [published]{.underline}
 dashboard. You are expected to publish your dashboard through
 [Quarto Pub](https://quarto.org/docs/publishing/quarto-pub.html), a free
 publishing service for static content created with Quarto. 
+
+Find this dashboard at <https://stat541.visruth.com/static_dashboard>. Run `quarto render .\dashboard.qmd` before committing. (Obviously could put it into another action but didn't want to.)
