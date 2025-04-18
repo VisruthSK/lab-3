@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  render-dashboard:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -44,6 +44,7 @@ jobs:
       - name: Render Quarto Project
         uses: quarto-dev/quarto-actions/render@v2
         with:
+          path: dashboard.qmd
           to: html
 
       - name: Commit rendered file
