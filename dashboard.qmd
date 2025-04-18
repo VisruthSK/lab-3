@@ -23,6 +23,8 @@ TODO:
 ```{r setup}
 library(tidyverse)
 library(gt)
+use("glue", "glue")
+use("scales", c("label_percent", "percent"))
 
 df <- readxl::read_xlsx(
   here::here(
@@ -52,7 +54,7 @@ df <- "1=United States, 2=Egypt, 3=Morocco, 4=Lebanon, 5=Saudi Arabia, 6=Jordan,
   select(-WP5)
 ```
 
-```{r}
+```{r map data}
 library(leaflet)
 library(rnaturalearth)
 library(sf)
@@ -82,7 +84,7 @@ country_data <- ne_countries(scale = "medium", returnclass = "sf") |>
   drop_na(scalerank)
 ```
 
-```{r}
+```{r vaccine data}
 vaccine <- df |>
   drop_na(Q25, Q26) |>
   mutate(
@@ -98,10 +100,85 @@ vaccine <- df |>
   )
 ```
 
+# Science
+
+## Column - 1
+
+### Perceived Science Knowledge per Country {.tabset}
+
+#### Perceived Science Knowledge per Country
+
+::: {.card}
+Percentage of people who answered "a lot" or "some" to the question: *How much do you, personally, know about science? Do you know a lot, some, not much, or nothing at all?*
+
+```{r map}
+#| expandable: false
+country_colours <- colorNumeric(
+  palette = "Greens",
+  domain = country_data$percent,
+  na.color = "#bdbdbd"
+)
+
+country_labels <- glue(
+  "<strong>{country_data$admin}</strong><br/>{percent(country_data$percent, accuracy = 0.1)}"
+) |>
+  lapply(htmltools::HTML)
+
+country_data |>
+  leaflet() |>
+  addTiles(options = tileOptions(noWrap = TRUE)) |>
+  addPolygons(
+    fillColor = ~ country_colours(percent),
+    weight = 1,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    label = country_labels,
+    highlightOptions = highlightOptions(
+      weight = 3,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    ),
+    group = "Countries"
+  )
+```
+:::
+
+#### Data
+
+```{r science data}
+#| expandable: false
+science |>
+  arrange(desc(percent)) |>
+  gt() |>
+  fmt_percent(columns = percent, decimals = 1) |>
+  cols_label(
+    Country = "Country",
+    percent = ""
+  ) |>
+  opt_row_striping(FALSE)
+```
+
+## Column - 2
+
+::: {.card title="Flash Facts"}
+**Americans** had the highest percentage of respondents who perceived themselves as being knowledgeable about science (~83%); however, around 10% of respondents disagreed on the safety of vaccines and about 5% of respondents disputed vaccines' effectiveness.
+:::
+
+::: {.card title="Flash Facts"}
+Surveyed respondents from **Egypt** expressed some of the *least* disbelief in the effectiveness (~0.5%) and safety (~0.3%) amongst all respondents. This stands in stark contrast to the United States.
+:::
+
 # Vaccine Belief
 
 ## Column - 1
-```{r}
+
+### Vaccine Safety and Efficacy {.tabset}
+```{r plotly}
+#| title: Vaccine Safety and Efficacy
 library(plotly)
 
 p <- vaccine |>
@@ -110,11 +187,11 @@ p <- vaccine |>
     y = effective
   )) +
   geom_point(aes(
-    text = glue::glue(
+    text = glue(
       "Country: {Country}<br>",
       "Region: {Region}<br>",
-      "Safe: {scales::percent(safe, accuracy = 0.01)}<br>",
-      "Effective: {scales::percent(effective, accuracy = 0.01)}"
+      "Safe: {percent(safe, accuracy = 0.01)}<br>",
+      "Effective: {percent(effective, accuracy = 0.01)}"
     ),
     color = Region
   )) +
@@ -124,31 +201,35 @@ p <- vaccine |>
     y = "Disagree on Efficacy",
     title = "Positive Relation Between Disbelief in Vaccine Safety and Efficacy"
   ) +
-  scale_x_continuous(labels = scales::label_percent()) +
-  scale_y_continuous(labels = scales::label_percent()) +
+  scale_x_continuous(labels = label_percent()) +
+  scale_y_continuous(labels = label_percent()) +
   theme_bw() +
   theme(legend.position = "none")
 
 ggplotly(p, tooltip = "text")
 ```
 
+```{r}
+#| title: Data
+vaccine |>
+  # ungroup() |>
+  # mutate(Region = fct_reorder(Region, safe)) |>
+  # group_by(Region) |>
+  arrange(safe) |>
+  gt() |>
+  fmt_percent(columns = c(safe, effective), decimals = 1)
+```
+
 ## Column - 2
 
-::: {.card title="Flash Facts"}
-**Here's a fact**
-:::
-
-::: {.card title="Flash Facts"}
-**Here's another fact**
-:::
-
-# Science
-
-## Column - 1
 ### Vaccine Belief by Region and Country {.tabset}
 
-```{r}
-#| title: Vaccine Belief by Region and Country
+::: {.card}
+
+Percentage of people who agreed with the statement: *Vaccines are safe.*
+
+```{r funky plot}
+#| title: Proportion of people who believed vaccines are safe.
 library(gghalves)
 # Taken from https://github.com/teunbrand/ggplot_tricks?tab=readme-ov-file#lets-begin
 my_fill <- aes(fill = after_scale(alpha(colour, 0.3)))
@@ -188,7 +269,7 @@ vaccine_info |>
     dotsize = 1,
     binwidth = 0.01
   ) +
-  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  scale_y_continuous(labels = label_percent(), limits = c(0, 1)) +
   coord_flip() +
   labs(
     x = element_blank(),
@@ -198,8 +279,9 @@ vaccine_info |>
   theme_bw() +
   theme(legend.position = "none")
 ```
+:::
 
-```{r}
+```{r vaccine data gt}
 #| title: Data
 vaccine_info |>
   ungroup() |>
@@ -211,60 +293,4 @@ vaccine_info |>
   cols_label(
     percent = "Vaccine Belief"
   )
-```
-
-
-### Perceived Science Knowledge per Country {.tabset}
-
-#### Perceived Science Knowledge per Country
-
-::: {.card}
-Percentage of people who answered "a lot" or "some" to the question: *How much do you, personally, know about science? Do you know a lot, some, not much, or nothing at all?*
-
-```{r}
-country_colours <- colorNumeric(
-  palette = "Greens",
-  domain = country_data$percent,
-  na.color = "#bdbdbd"
-)
-
-country_labels <- glue::glue(
-  "<strong>{country_data$admin}</strong><br/>{paste0(round(country_data$percent * 100, 1), '%')}"
-) |>
-  lapply(htmltools::HTML)
-
-country_data |>
-  leaflet() |>
-  addTiles(options = tileOptions(noWrap = TRUE)) |>
-  addPolygons(
-    fillColor = ~ country_colours(percent),
-    weight = 1,
-    opacity = 1,
-    color = "white",
-    dashArray = "3",
-    fillOpacity = 0.7,
-    label = country_labels,
-    highlightOptions = highlightOptions(
-      weight = 3,
-      color = "#666",
-      dashArray = "",
-      fillOpacity = 0.9,
-      bringToFront = TRUE
-    ),
-    group = "Countries"
-  )
-```
-:::
-
-#### Data
-
-```{r}
-science |>
-  gt() |>
-  fmt_percent(columns = percent, decimals = 1) |>
-  cols_label(
-    Country = "Country",
-    percent = ""
-  ) |>
-  opt_row_striping(FALSE)
 ```
