@@ -36,7 +36,8 @@ jobs:
             libnode-dev \
             libpng-dev \
             libudunits2-dev \
-            libx11-dev
+            libx11-dev \
+            pandoc
 
       - name: Setup renv
         uses: r-lib/actions/setup-renv@v2
