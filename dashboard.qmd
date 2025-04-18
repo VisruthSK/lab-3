@@ -2,7 +2,7 @@
 title: "Trust in Science in the 2018 Global Health Monitor Report"
 format:
   dashboard:
-    theme: spacelab
+    theme: pulse
     orientation: columns
     nav-buttons: [github, linkedin]
     github: https://github.com/VisruthSK/lab-3
@@ -24,7 +24,8 @@ TODO:
 library(tidyverse)
 library(gt)
 use("glue", "glue")
-use("scales", c("label_percent", "percent"))
+use("RColorBrewer", "brewer.pal")
+use("scales", c("label_percent", "percent", "alpha"))
 
 df <- readxl::read_xlsx(
   here::here(
@@ -52,6 +53,8 @@ df <- "1=United States, 2=Egypt, 3=Morocco, 4=Lebanon, 5=Saudi Arabia, 6=Jordan,
   mutate(WP5 = as.numeric(WP5)) |>
   right_join(df) |>
   select(-WP5)
+
+region_colours <- brewer.pal(7, "Dark2")
 ```
 
 ```{r map data}
@@ -61,9 +64,9 @@ library(sf)
 
 science <- df |>
   drop_na(Q1) |>
-  mutate(science = Q1 < 3, Country = fct(Country)) |>
-  group_by(Country) |>
-  summarize(percent = mean(science))
+  mutate(science = Q1 < 3, across(c(Country, Region), fct)) |>
+  group_by(Country, Region) |>
+  summarize(percent = mean(science), .groups = "drop")
 
 country_data <- ne_countries(scale = "medium", returnclass = "sf") |>
   mutate(
@@ -108,13 +111,12 @@ vaccine <- df |>
 
 #### Perceived Science Knowledge per Country
 
-::: {.card}
+::: {.card expandable="false"}
 Percentage of people who answered "a lot" or "some" to the question: *How much do you, personally, know about science? Do you know a lot, some, not much, or nothing at all?*
 
 ```{r map}
-#| expandable: false
 country_colours <- colorNumeric(
-  palette = "Greens",
+  palette = "Purples",
   domain = country_data$percent,
   na.color = "#bdbdbd"
 )
@@ -157,15 +159,20 @@ science |>
   fmt_percent(columns = percent, decimals = 1) |>
   cols_label(
     Country = "Country",
-    percent = ""
+    percent = "Science Knowledge"
   ) |>
-  opt_row_striping(FALSE)
+  opt_row_striping(FALSE) |>
+  data_color(
+    columns = Region,
+    method = "factor",
+    palette = alpha(region_colours, 0.5)
+  )
 ```
 
 ## Column - 2
 
 ::: {.card title="Flash Facts"}
-**Americans** had the highest percentage of respondents who perceived themselves as being knowledgeable about science (~83%); however, around 10% of respondents disagreed on the safety of vaccines and about 5% of respondents disputed vaccines' effectiveness.
+**Americans** had the *highest* percentage of respondents who perceived themselves as being knowledgeable about science (~83%); however, around 10% of respondents *disagreed* on the safety of vaccines and about 5% of respondents *disputed* vaccines' effectiveness.
 :::
 
 ::: {.card title="Flash Facts"}
@@ -203,33 +210,40 @@ p <- vaccine |>
   ) +
   scale_x_continuous(labels = label_percent()) +
   scale_y_continuous(labels = label_percent()) +
+  scale_color_manual(values = region_colours) +
   theme_bw() +
   theme(legend.position = "none")
 
 ggplotly(p, tooltip = "text")
 ```
 
-```{r}
+```{r vaccine safety efficacy gt}
 #| title: Data
 vaccine |>
-  # ungroup() |>
-  # mutate(Region = fct_reorder(Region, safe)) |>
-  # group_by(Region) |>
-  arrange(safe) |>
+  mutate(tmp = (safe + effective) / 2) |> 
+  arrange(tmp) |>
+  select(-tmp) |> 
   gt() |>
-  fmt_percent(columns = c(safe, effective), decimals = 1)
+  fmt_percent(columns = c(safe, effective), decimals = 1) |>
+  cols_label(
+    safe = "Safety",
+    effective = "Efficacy"
+  ) |>
+  data_color(
+    columns = Region,
+    method = "factor",
+    palette = alpha(region_colours, 0.5)
+  )
 ```
 
 ## Column - 2
 
 ### Vaccine Belief by Region and Country {.tabset}
 
-::: {.card}
-
+::: {.card title = "Vaccine Safety by Region and Country"}
 Percentage of people who agreed with the statement: *Vaccines are safe.*
 
 ```{r funky plot}
-#| title: Proportion of people who believed vaccines are safe.
 library(gghalves)
 # Taken from https://github.com/teunbrand/ggplot_tricks?tab=readme-ov-file#lets-begin
 my_fill <- aes(fill = after_scale(alpha(colour, 0.3)))
@@ -270,6 +284,8 @@ vaccine_info |>
     binwidth = 0.01
   ) +
   scale_y_continuous(labels = label_percent(), limits = c(0, 1)) +
+  scale_color_manual(values = region_colours) +
+  scale_fill_manual(values = region_colours) +
   coord_flip() +
   labs(
     x = element_blank(),
@@ -292,5 +308,10 @@ vaccine_info |>
   fmt_percent(columns = percent, decimals = 1) |>
   cols_label(
     percent = "Vaccine Belief"
+  ) |>
+  data_color(
+    columns = Region,
+    method = "factor",
+    palette = alpha(region_colours, 0.5)
   )
 ```
